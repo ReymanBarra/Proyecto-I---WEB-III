@@ -123,14 +123,14 @@ class CategoriaAPI {
         try {
             const response = await this.obtenerTodas();
             if (response.success) {
-                console.log('✅ Conexión con API establecida correctamente');
+                console.log(' Conexión con API establecida correctamente');
                 return true;
             } else {
-                console.error('❌ Error en conexión con API:', response.error);
+                console.error(' Error en conexión con API:', response.error);
                 return false;
             }
         } catch (error) {
-            console.error('❌ Error validando conexión:', error);
+            console.error(' Error validando conexión:', error);
             return false;
         }
     }
