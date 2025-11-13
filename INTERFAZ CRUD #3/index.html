@@ -2,47 +2,277 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRUD de Categorías - Proyecto WEB III</title>
-    <meta name="description" content="Sistema CRUD para gestión de categorías con HTML, JavaScript y API REST">
-    <meta name="author" content="Proyecto WEB III">
-    
+    <title>CRUD Cifrado – WEB III</title>
 
-    
-    <!-- CSS -->
-    <link rel="stylesheet" href="css/styles.css">
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+
+    <!-- DataTable -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+
+    <style>
+        body {
+            background: #f4f6f9;
+            padding: 20px;
+        }
+        .card {
+            border-radius: 10px;
+        }
+        .modal-content {
+            border-radius: 10px;
+        }
+    </style>
 </head>
 <body>
-    <!-- Container Principal -->
-    <div class="container">
-        <!-- Header Principal -->
-        <header class="main-header">
-            <h1 class="main-title">CRUD de Categorías</h1>
-            <p class="main-subtitle">
-                Sistema de gestión de categorías con métodos HTTP estándar (GET, POST, PUT, DELETE)
-            </p>
-        </header>
 
-        <!-- Área Principal del CRUD -->
-        <main>
-            <!-- DataTable Container -->
-            <section id="dataTableContainer" class="fade-in">
-                <!-- El DataTable se genera dinámicamente aquí -->
-            </section>
-        </main>
+<div class="container">
+    <div class="card shadow p-4">
+        <h3 class="text-center mb-4">CRUD de Categorías – WEB III API</h3>
 
-        <!-- Footer -->
-   
+        <button class="btn btn-primary mb-3" onclick="abrirModalAgregar()">Agregar Categoría</button>
 
-    <!-- jQuery Library (local file) -->
-    <script src="jquery-3.6.3.min.js"></script>
+        <table id="tablaCategorias" class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+
+
+<!-- ===========================================================
+   MODAL PARA AGREGAR/EDITAR
+==============================================================-->
+<div class="modal fade" id="modalCategoria" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tituloModal">Agregar Categoría</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <input type="hidden" id="modo">
+                <input type="hidden" id="categoriaId">
+
+                <label>Nombre de la Categoría</label>
+                <input type="text" id="nombre" class="form-control" placeholder="Ingrese el nombre de la categoría">
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-warning" onclick="limpiar()">Limpiar</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-success" onclick="guardarCategoria()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- ===========================================================
+   LIBRERÍAS JS
+==============================================================-->
+<!-- jQuery - SIEMPRE PRIMERO -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- Bootstrap -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- DataTables - SIEMPRE DESPUÉS DE jQuery -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+
+
+<!-- ===========================================================
+   JAVASCRIPT PRINCIPAL
+==============================================================-->
+<script>
+/* ===========================================================
+   CONFIG DE LA API
+===========================================================*/
+// Prueba diferentes URLs dependiendo de tu configuración de XAMPP
+// const API_URL = "http://localhost/PROYECTO%20I%20-%20WEB%20III%20API/Proyecto-I---WEB-III-API/controlador/categoria.php";
+// const API_URL = "http://127.0.0.1/PROYECTO%20I%20-%20WEB%20III%20API/Proyecto-I---WEB-III-API/controlador/categoria.php";
+const API_URL = "http://localhost:80/PROYECTO%20I%20-%20WEB%20III%20API/Proyecto-I---WEB-III-API/controlador/categoria.php";
+
+
+/* ===========================================================
+   CARGAR TABLA
+===========================================================*/
+let tabla;
+
+function cargarTabla() {
+    fetch(API_URL, {
+        method: "GET",
+        mode: 'cors',
+        headers: {
+            'Accept': 'application/json'
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        tabla.clear();
+        
+        // La API devuelve un array de objetos directamente
+        if (Array.isArray(data)) {
+            data.forEach(categoria => {
+                tabla.row.add([
+                    categoria.id,
+                    categoria.nombre,
+                    `
+                    <button class="btn btn-warning btn-sm" onclick="editar(${categoria.id}, '${categoria.nombre}')">Editar</button>
+                    <button class="btn btn-danger btn-sm" onclick="eliminar(${categoria.id})">Eliminar</button>
+                    `
+                ]);
+            });
+        }
+        tabla.draw();
+    })
+    .catch(error => {
+        console.error('Error cargando categorías:', error);
+        alert('Error cargando categorías: ' + error.message);
+    });
+}
+
+
+/* ===========================================================
+   ABRIR MODAL AGREGAR
+===========================================================*/
+function abrirModalAgregar() {
+    $("#tituloModal").text("Agregar Categoría");
+    $("#modo").val("agregar");
+
+    $("#categoriaId").val("");
+    $("#nombre").val("");
+
+    new bootstrap.Modal("#modalCategoria").show();
+}
+
+
+/* ===========================================================
+   EDITAR
+===========================================================*/
+function editar(id, nombre) {
+    $("#tituloModal").text("Editar Categoría");
+    $("#modo").val("editar");
+
+    $("#categoriaId").val(id);
+    $("#nombre").val(nombre);
+
+    new bootstrap.Modal("#modalCategoria").show();
+}
+
+
+/* ===========================================================
+   GUARDAR (POST o PUT)
+===========================================================*/
+function guardarCategoria() {
+    const modo = $("#modo").val();
+    const nombre = $("#nombre").val().trim();
     
-    <!-- App Scripts -->
-    <script src="config/config.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/datatable_jquery.js"></script>
-    <script src="js/app.js"></script>
+    if (!nombre) {
+        alert("El nombre de la categoría es requerido");
+        return;
+    }
 
+    let url = API_URL;
+    let metodo = "POST";
+    let datos = { nombre: nombre };
+    
+    if (modo === "editar") {
+        const id = $("#categoriaId").val();
+        url = `${API_URL}?id=${id}`; // Agregar ID como parámetro en la URL
+        metodo = "PUT";
+        datos = { nombre: nombre }; // Solo enviar el nombre en PUT
+    }
+
+    fetch(url, {
+        method: metodo,
+        mode: 'cors',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify(datos)
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => {
+        alert(modo === "agregar" ? "Categoría creada exitosamente" : "Categoría actualizada exitosamente");
+        cargarTabla();
+        bootstrap.Modal.getInstance(document.querySelector("#modalCategoria")).hide();
+    })
+    .catch(error => {
+        console.error('Error guardando categoría:', error);
+        alert('Error guardando categoría');
+    });
+}
+
+
+/* ===========================================================
+   ELIMINAR
+===========================================================*/
+function eliminar(id) {
+    if (!confirm("¿Está seguro de que desea eliminar esta categoría?")) return;
+
+    // Usar el ID como parámetro en la URL para DELETE
+    const url = `${API_URL}?id=${id}`;
+
+    fetch(url, {
+        method: "DELETE",
+        mode: 'cors',
+        headers: {
+            'Accept': 'application/json'
+        }
+        // No enviar body en DELETE, usar solo el parámetro URL
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(result => {
+        alert("Categoría eliminada exitosamente");
+        cargarTabla();
+    })
+    .catch(error => {
+        console.error('Error eliminando categoría:', error);
+        alert('Error eliminando categoría');
+    });
+}
+
+function limpiar() {
+    $("#categoriaId").val("");
+    $("#nombre").val("");
+}
+
+
+/* ===========================================================
+   INICIALIZAR DATATABLE
+===========================================================*/
+$(document).ready(function () {
+    tabla = $('#tablaCategorias').DataTable();
+    cargarTabla();
+});
+</script>
 
 </body>
 </html>
