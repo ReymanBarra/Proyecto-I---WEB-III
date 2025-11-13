@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>CRUD Cifrado – WEB III</title>
+
+    <!-- Bootstrap -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+
+    <!-- DataTable -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+
+    <style>
+        body {
+            background: #f4f6f9;
+            padding: 20px;
+        }
+        .card {
+            border-radius: 10px;
+        }
+        .modal-content {
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="card shadow p-4">
+        <h3 class="text-center mb-4">CRUD Encriptado – WEB III API</h3>
+
+        <button class="btn btn-primary mb-3" onclick="abrirModalAgregar()">Agregar Usuario</button>
+
+        <table id="tablaUsuarios" class="table table-striped table-hover">
+            <thead class="table-dark">
+                <tr>
+                    <th>Cédula</th>
+                    <th>Nombre</th>
+                    <th>Edad</th>
+                    <th>Teléfono</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+
+
+<!-- ===========================================================
+   MODAL PARA AGREGAR/EDITAR
+==============================================================-->
+<div class="modal fade" id="modalUsuario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="tituloModal">Agregar Usuario</h5>
+                <button class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+
+            <div class="modal-body">
+                <input type="hidden" id="modo">
+
+                <label>Cédula</label>
+                <input type="text" id="cedula" class="form-control">
+
+                <label class="mt-3">Nombre</label>
+                <input type="text" id="nombre" class="form-control">
+
+                <label class="mt-3">Edad</label>
+                <input type="number" id="edad" class="form-control">
+
+                <label class="mt-3">Teléfono</label>
+                <input type="text" id="telefono" class="form-control">
+            </div>
+
+            <div class="modal-footer">
+                <button class="btn btn-warning" onclick="limpiar()">Limpiar</button>
+                <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button class="btn btn-success" onclick="guardarUsuario()">Guardar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- ===========================================================
+   LIBRERÍAS JS
+==============================================================-->
+<!-- jQuery - SIEMPRE PRIMERO -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+<!-- Bootstrap -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- DataTables - SIEMPRE DESPUÉS DE jQuery -->
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<!-- CryptoJS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+
+
+
+<!-- ===========================================================
+   JAVASCRIPT PRINCIPAL
+==============================================================-->
+<script>
+/* ===========================================================
+   CONFIG DEL PROGRAMADOR
+==============================================================*/
+const CEDULA_PROGRAMADOR = "504640986";
+const CLAVE_AES = "0123456789abcdef0123456789abcdef"; // AES-256
+
+const API_URL = "http://localhost/PROYECTO I - WEB III API/controlador/usuario.php";
+
+
+/* ===========================================================
+   ENCRIPTAR JSON
+==============================================================*/
+function encriptarJSON(jsonData) {
+    const jsonString = JSON.stringify(jsonData);
+
+    const encrypted = CryptoJS.AES.encrypt(
+        CryptoJS.enc.Utf8.parse(jsonString),
+        CryptoJS.enc.Utf8.parse(CLAVE_AES),
+        { mode: CryptoJS.mode.ECB, padding: CryptoJS.pad.Pkcs7 }
+    );
+
+    return encrypted.toString();
+}
+
+
+/* ===========================================================
+   CARGAR TABLA
+==============================================================*/
+let tabla;
+
+function cargarTabla() {
+    fetch(API_URL, {
+        method: "GET",
+        headers: { "CODIGO": CEDULA_PROGRAMADOR }
+    })
+    .then(res => res.json())
+    .then(data => {
+        tabla.clear();
+        data.aaData.forEach(u => {
+            tabla.row.add([
+                u[0],
+                u[1],
+                u[2],
+                u[3],
+                `
+                <button class="btn btn-warning btn-sm" onclick="editar('${u[0]}','${u[1]}','${u[2]}','${u[3]}')">Editar</button>
+                <button class="btn btn-danger btn-sm" onclick="eliminar('${u[0]}')">Eliminar</button>
+                `
+            ]);
+        });
+        tabla.draw();
+    });
+}
+
+
+/* ===========================================================
+   ABRIR MODAL AGREGAR
+==============================================================*/
+function abrirModalAgregar() {
+    $("#tituloModal").text("Agregar Usuario");
+    $("#modo").val("agregar");
+
+    $("#cedula").val("");
+    $("#nombre").val("");
+    $("#edad").val("");
+    $("#telefono").val("");
+
+    new bootstrap.Modal("#modalUsuario").show();
+}
+
+
+/* ===========================================================
+   EDITAR
+==============================================================*/
+function editar(ced, nom, ed, tel) {
+    $("#tituloModal").text("Editar Usuario");
+    $("#modo").val("editar");
+
+    $("#cedula").val(ced);
+    $("#nombre").val(nom);
+    $("#edad").val(ed);
+    $("#telefono").val(tel);
+
+    new bootstrap.Modal("#modalUsuario").show();
+}
+
+
+/* ===========================================================
+   GUARDAR (POST o PUT)
+==============================================================*/
+function guardarUsuario() {
+    const modo = $("#modo").val();
+
+    const datos = {
+        cedula: $("#cedula").val(),
+        nombre: $("#nombre").val(),
+        edad: $("#edad").val(),
+        telefono: $("#telefono").val()
+    };
+
+    const cifrado = encriptarJSON(datos);
+
+    fetch(API_URL, {
+        method: modo === "agregar" ? "POST" : "PUT",
+        headers: { "CODIGO": CEDULA_PROGRAMADOR },
+        body: cifrado
+    })
+    .then(r => r.json())
+    .then(res => {
+        alert(res.Correcto || res.Error);
+        cargarTabla();
+        bootstrap.Modal.getInstance(document.querySelector("#modalUsuario")).hide();
+    });
+}
+
+
+/* ===========================================================
+   ELIMINAR
+==============================================================*/
+function eliminar(cedula) {
+    if (!confirm("¿Eliminar este usuario?")) return;
+
+    const cifrado = encriptarJSON({ cedula: cedula });
+
+    fetch(API_URL, {
+        method: "DELETE",
+        headers: { "CODIGO": CEDULA_PROGRAMADOR },
+        body: cifrado
+    })
+    .then(r => r.json())
+    .then(res => {
+        alert(res.Correcto || res.Error);
+        cargarTabla();
+    });
+}
+
+function limpiar() {
+    $("#cedula").val("");
+    $("#nombre").val("");
+    $("#edad").val("");
+    $("#telefono").val("");
+}
+
+
+
+/* ===========================================================
+   INICIALIZAR DATATABLE
+==============================================================*/
+$(document).ready(function () {
+    tabla = $('#tablaUsuarios').DataTable();
+    cargarTabla();
+});
+</script>
+
+</body>
+</html>
