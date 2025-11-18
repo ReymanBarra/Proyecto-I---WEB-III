@@ -182,6 +182,50 @@ function editar(id, nombre) {
 
 
 /* ===========================================================
+   VERIFICAR SI EXISTE CATEGORÍA CON EL MISMO NOMBRE
+===========================================================*/
+function verificarNombreDuplicado(nombre, idActual = null) {
+    return new Promise((resolve, reject) => {
+        fetch(API_URL, {
+            method: "GET",
+            mode: 'cors',
+            headers: {
+                'Accept': 'application/json'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.text();
+        })
+        .then(responseText => {
+            try {
+                const data = JSON.parse(responseText);
+                
+                if (Array.isArray(data)) {
+                    // Buscar si existe una categoría con el mismo nombre
+                    const categoriaExistente = data.find(categoria => 
+                        categoria.nombre.toLowerCase() === nombre.toLowerCase() && 
+                        categoria.id != idActual // Excluir la categoría que se está editando
+                    );
+                    
+                    resolve(categoriaExistente ? true : false);
+                } else {
+                    resolve(false);
+                }
+            } catch (jsonError) {
+                reject(new Error('Error parseando respuesta del servidor'));
+            }
+        })
+        .catch(error => {
+            reject(error);
+        });
+    });
+}
+
+
+/* ===========================================================
    GUARDAR (POST o PUT)
 ===========================================================*/
 function guardarCategoria() {
@@ -193,13 +237,38 @@ function guardarCategoria() {
         return;
     }
 
+    // Verificar si el nombre ya existe
+    const idActual = modo === "editar" ? $("#categoriaId").val() : null;
+    
+    verificarNombreDuplicado(nombre, idActual)
+        .then(existe => {
+            if (existe) {
+                alert(` Ya existe una categoría con el nombre "${nombre}".\n\nPor favor, elije un nombre diferente.`);
+                $("#nombre").focus();
+                return;
+            }
+            
+            // Si no existe, proceder con el guardado
+            procederConGuardado(modo, nombre, idActual);
+        })
+        .catch(error => {
+            console.error('Error verificando nombre duplicado:', error);
+            alert('Error verificando nombre duplicado. Intentando guardar de todas formas...');
+            procederConGuardado(modo, nombre, idActual);
+        });
+}
+
+
+/* ===========================================================
+   PROCEDER CON EL GUARDADO DESPUÉS DE VALIDACIÓN
+===========================================================*/
+function procederConGuardado(modo, nombre, idActual) {
     let url = API_URL;
     let metodo = "POST";
     let datos = { nombre: nombre };
     
     if (modo === "editar") {
-        const id = $("#categoriaId").val();
-        url = `${API_URL}?id=${id}`;
+        url = `${API_URL}?id=${idActual}`;
         metodo = "PUT";
         datos = { nombre: nombre };
     }
@@ -213,13 +282,13 @@ function guardarCategoria() {
     })
     .then(response => response.json())
     .then(result => {
-        alert(modo === "agregar" ? "Categoría creada exitosamente" : "Categoría actualizada exitosamente");
+        alert(modo === "agregar" ? " Categoría creada exitosamente" : " Categoría actualizada exitosamente");
         cargarTabla();
         bootstrap.Modal.getInstance(document.querySelector("#modalCategoria")).hide();
     })
     .catch(error => {
         console.error('Error guardando categoría:', error);
-        alert('Error guardando categoría');
+        alert(' Error guardando categoría: ' + error.message);
     });
 }
 
@@ -265,22 +334,22 @@ function eliminar(id) {
         // Verificar si la respuesta parece ser JSON
         try {
             const result = JSON.parse(responseText);
-            alert("✅ Categoría eliminada exitosamente");
+            alert(" Categoría eliminada exitosamente");
             cargarTabla();
         } catch (jsonError) {
             console.error('La respuesta no es JSON válido:', responseText);
             // Si la respuesta contiene "success" o algún indicador de éxito, asumir que funcionó
             if (responseText.toLowerCase().includes('success') || responseText.toLowerCase().includes('eliminad')) {
-                alert("✅ Categoría eliminada exitosamente");
+                alert(" Categoría eliminada exitosamente");
                 cargarTabla();
             } else {
-                alert('❌ Error del servidor:\n\n' + responseText.substring(0, 300));
+                alert(' Error del servidor:\n\n' + responseText.substring(0, 300));
             }
         }
     })
     .catch(error => {
         console.error('Error eliminando categoría:', error);
-        alert('❌ Error eliminando categoría: ' + error.message);
+        alert(' Error eliminando categoría: ' + error.message);
     });
 }
 
