@@ -98,10 +98,9 @@
 /* ===========================================================
    CONFIG DE LA API
 ===========================================================*/
+const API_URL = "https://proyecto-i-web-iii-api-production.up.railway.app/controlador/categoria.php";
 
-//const API_URL = "http://localhost:80/PROYECTO%20I%20-%20WEB%20III%20API/Proyecto-I---WEB-III-API/controlador/categoria.php";
 
-const API_URL = "http://localhost/PROYECTO I - WEB III API/controlador/categoria.php";
 /* ===========================================================
    CARGAR TABLA
 ===========================================================*/
@@ -109,18 +108,9 @@ let tabla;
 
 function cargarTabla() {
     fetch(API_URL, {
-        method: "GET",
-        mode: 'cors',
-        headers: {
-            'Accept': 'application/json'
-        }
+        method: "GET"
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         tabla.clear();
         
@@ -141,7 +131,7 @@ function cargarTabla() {
     })
     .catch(error => {
         console.error('Error cargando categorías:', error);
-        alert('Error cargando categorías: ' + error.message);
+        alert('Error cargando categorías');
     });
 }
 
@@ -192,26 +182,19 @@ function guardarCategoria() {
     
     if (modo === "editar") {
         const id = $("#categoriaId").val();
-        url = `${API_URL}?id=${id}`; // Agregar ID como parámetro en la URL
+        url = `${API_URL}?id=${id}`;
         metodo = "PUT";
-        datos = { nombre: nombre }; // Solo enviar el nombre en PUT
+        datos = { nombre: nombre };
     }
 
     fetch(url, {
         method: metodo,
-        mode: 'cors',
         headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
+            'Content-Type': 'application/json'
         },
         body: JSON.stringify(datos)
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(result => {
         alert(modo === "agregar" ? "Categoría creada exitosamente" : "Categoría actualizada exitosamente");
         cargarTabla();
@@ -230,23 +213,16 @@ function guardarCategoria() {
 function eliminar(id) {
     if (!confirm("¿Está seguro de que desea eliminar esta categoría?")) return;
 
-    // Usar el ID como parámetro en la URL para DELETE
     const url = `${API_URL}?id=${id}`;
 
     fetch(url, {
         method: "DELETE",
-        mode: 'cors',
         headers: {
-            'Accept': 'application/json'
-        }
-        // No enviar body en DELETE, usar solo el parámetro URL
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ id: id })
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(result => {
         alert("Categoría eliminada exitosamente");
         cargarTabla();
